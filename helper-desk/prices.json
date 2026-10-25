@@ -1,0 +1,6 @@
+{
+  "_note": "USD per million tokens. These are ASSUMED rates, not verified against a price list. Edit them to match your billing. Models missing from 'models' use 'default' and are flagged as default-rate estimates.",
+  "default": { "input": 3.0, "output": 15.0, "cache_write": 3.75, "cache_read": 0.30 },
+  "models": {},
+  "running_usd_per_mtok": 3.0
+}
