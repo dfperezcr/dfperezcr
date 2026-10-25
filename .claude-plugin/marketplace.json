@@ -1,0 +1,11 @@
+{
+  "name": "dfperezcr",
+  "owner": { "name": "dfperezcr" },
+  "plugins": [
+    {
+      "name": "helper-desk",
+      "source": "./helper-desk",
+      "description": "Status of active sub-agents: state, tokens, tool calls and estimated cost, shown in the status line and on demand."
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "name": "helper-desk",
+  "version": "0.1.0",
+  "description": "Status of active sub-agents: state, tokens, tool calls and estimated cost, shown in the status line and on demand.",
+  "author": {
+    "name": "dfperezcr"
+  }
+}
