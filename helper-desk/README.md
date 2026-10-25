@@ -14,15 +14,18 @@ Load it for a session (tested):
 claude --plugin-dir /path/to/helper-desk
 ```
 
-Install it permanently from a marketplace (tested with a local marketplace folder):
+Install it permanently from the repository marketplace (`.claude-plugin/marketplace.json` at the repo root).
+Tested with a local clone:
 
 ```
-/plugin marketplace add <folder-with-.claude-plugin/marketplace.json>
-/plugin install helper-desk@<marketplace-name>
+claude plugin marketplace add /path/to/dfperezcr
+claude plugin install helper-desk@dfperezcr
 ```
+
+Or from inside Claude Code: `/plugin marketplace add /path/to/dfperezcr`, then `/plugin install helper-desk@dfperezcr`.
+The GitHub form (`/plugin marketplace add dfperezcr/dfperezcr`) is not tested yet.
 
 `/plugin install <path>` does not work: Claude Code only installs plugins listed in a marketplace.
-The repository does not yet ship a `marketplace.json`.
 
 On the first session after installing, the plugin wires the status line in `settings.json` automatically (see below).
 
