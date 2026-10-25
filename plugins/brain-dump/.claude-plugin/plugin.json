@@ -1,0 +1,13 @@
+{
+  "name": "brain-dump",
+  "displayName": "Brain Dump",
+  "version": "0.1.0",
+  "description": "Turns messy, voice-transcribed input into a structured prompt (Goal, Context, Inputs, Constraints, Output format, Open questions) and asks for confirmation before executing it.",
+  "author": {
+    "name": "dfperezcr",
+    "url": "https://github.com/dfperezcr"
+  },
+  "repository": "https://github.com/dfperezcr/dfperezcr",
+  "license": "GPL-3.0-only",
+  "keywords": ["prompting", "voice", "dictation", "transcription", "prompt-structuring"]
+}

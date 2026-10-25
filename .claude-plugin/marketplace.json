@@ -1,0 +1,15 @@
+{
+  "name": "dfperezcr",
+  "description": "Claude Code plugins by dfperezcr.",
+  "owner": {
+    "name": "dfperezcr",
+    "url": "https://github.com/dfperezcr"
+  },
+  "plugins": [
+    {
+      "name": "brain-dump",
+      "source": "./plugins/brain-dump",
+      "description": "Turns messy, voice-transcribed input into a structured prompt and asks for confirmation before executing it."
+    }
+  ]
+}
