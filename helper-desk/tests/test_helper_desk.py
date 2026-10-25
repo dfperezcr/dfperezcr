@@ -114,6 +114,34 @@ class HelperDeskTest(unittest.TestCase):
         agent = json.loads((pathlib.Path(self.dir) / f"{SESSION}.json").read_text())["agents"][AGENT]
         self.assertEqual(agent["live_tokens"], 12000)
 
+    def test_background_agent_completes_via_subagent_stop_with_transcript_usage(self):
+        transcript = pathlib.Path(self.dir) / "agent.jsonl"
+        msg = {"id": "msg_1", "model": "claude-sonnet-5-5", "usage": {"input_tokens": 4, "output_tokens": 105,
+                                        "cache_creation_input_tokens": 24989, "cache_read_input_tokens": 24864}}
+        transcript.write_text(json.dumps({"message": msg}) + "\n" + json.dumps({"message": msg}) + "\n")
+        self.hook({"hook_event_name": "SubagentStart", "agent_id": AGENT, "agent_type": "general-purpose"})
+        self.hook({"hook_event_name": "PostToolUse", "tool_name": "Agent",
+                   "tool_response": {"agentId": AGENT, "status": "async_launched"}})
+        mid = json.loads((pathlib.Path(self.dir) / f"{SESSION}.json").read_text())["agents"][AGENT]
+        self.assertEqual(mid["status"], "running")  # launch result is not a final status
+        self.hook({"hook_event_name": "SubagentStop", "agent_id": AGENT,
+                   "agent_transcript_path": str(transcript)})
+        agent = json.loads((pathlib.Path(self.dir) / f"{SESSION}.json").read_text())["agents"][AGENT]
+        self.assertEqual(agent["status"], "completed")
+        self.assertEqual(agent["tokens"], 4 + 105 + 24989 + 24864)  # message counted once
+        self.assertEqual(agent["model"], "claude-sonnet-5-5")  # taken from the transcript
+        self.assertTrue(agent["cost_known"])
+        self.assertIsNotNone(agent["cost_usd"])
+
+    def test_task_stop_marks_agent_killed(self):
+        self.hook({"hook_event_name": "SubagentStart", "agent_id": AGENT, "agent_type": "general-purpose"})
+        self.hook({"hook_event_name": "PostToolUse", "tool_name": "Agent",
+                   "tool_response": {"agentId": AGENT, "status": "async_launched"}})
+        self.hook({"hook_event_name": "PostToolUse", "tool_name": "TaskStop",
+                   "tool_response": {"task_id": AGENT, "message": "Successfully stopped task"}})
+        agent = json.loads((pathlib.Path(self.dir) / f"{SESSION}.json").read_text())["agents"][AGENT]
+        self.assertEqual(agent["status"], "killed")
+
     def test_taskbar_silent_without_agents(self):
         self.assertEqual(run("taskbar.py", {"session_id": "nobody"}, self.dir), "")
 

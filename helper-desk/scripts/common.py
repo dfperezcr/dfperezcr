@@ -86,6 +86,33 @@ def new_agent(agent_type, now):
     }
 
 
+def usage_from_transcript(path):
+    """Sums token usage over a sub-agent transcript, counting each message once.
+
+    Returns (usage, model). Only usage numbers and the model name are read; message content
+    is not kept. Returns (None, None) when the transcript has no usage.
+    """
+    try:
+        lines = pathlib.Path(path).read_text().splitlines()
+    except (OSError, TypeError):
+        return None, None
+    by_message = {}
+    model = None
+    for line in lines:
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            continue
+        message = entry.get("message")
+        if isinstance(message, dict) and isinstance(message.get("usage"), dict):
+            by_message[message.get("id") or entry.get("uuid")] = message["usage"]
+            model = message.get("model") or model
+    if not by_message:
+        return None, None
+    usage = {f: sum(int(u.get(f) or 0) for u in by_message.values()) for f in TOKEN_FIELDS}
+    return usage, model
+
+
 def estimate_cost(model, usage):
     """Usage-based estimate. Returns (usd, rates_known_for_model)."""
     table = json.loads((PLUGIN_ROOT / "prices.json").read_text())
