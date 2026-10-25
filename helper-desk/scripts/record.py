@@ -19,6 +19,7 @@ import time
 from common import (
     estimate_cost,
     load,
+    locked,
     new_agent,
     prune_old_states,
     save,
@@ -71,6 +72,11 @@ def main():
         prune_old_states()
         return
 
+    with locked(session):
+        apply(name, event, session, now)
+
+
+def apply(name, event, session, now):
     state = load(session)
     agents = state["agents"]
 

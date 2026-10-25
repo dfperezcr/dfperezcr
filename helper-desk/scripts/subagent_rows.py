@@ -7,12 +7,17 @@ a JSON object {"id", "content"}. The live token count is also saved so the taskb
 import json
 import sys
 
-from common import estimate_running, fmt_tokens, fmt_usd, load, save
+from common import estimate_running, fmt_tokens, fmt_usd, load, locked, save
 
 
 def main():
     event = json.load(sys.stdin)
     session = event.get("session_id", "")
+    with locked(session):
+        update_live_tokens(event, session)
+
+
+def update_live_tokens(event, session):
     state = load(session)
     agents = state["agents"]
     changed = False

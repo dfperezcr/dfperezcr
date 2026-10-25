@@ -3,6 +3,8 @@
 Stores only ids, types, statuses, timestamps and numeric counts.
 Never stores prompts, tool input or output, or assistant messages.
 """
+import contextlib
+import fcntl
 import json
 import os
 import pathlib
@@ -52,6 +54,19 @@ def save(session_id, state):
     os.replace(tmp, path)
 
 
+@contextlib.contextmanager
+def locked(session_id):
+    """Serializes read-modify-write of one session's state across concurrent hooks."""
+    path = state_path(session_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path.with_name(path.name + ".lock"), "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+
+
 def latest_session():
     files = list(state_dir().glob("*.json")) if state_dir().is_dir() else []
     if not files:
@@ -63,7 +78,7 @@ def prune_old_states():
     if not state_dir().is_dir():
         return
     cutoff = time.time() - PRUNE_AFTER_SECONDS
-    for f in state_dir().glob("*.json"):
+    for f in list(state_dir().glob("*.json")) + list(state_dir().glob("*.json.lock")):
         if f.stat().st_mtime < cutoff:
             f.unlink(missing_ok=True)
 
