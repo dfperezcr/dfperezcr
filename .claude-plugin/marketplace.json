@@ -10,6 +10,11 @@
       "name": "brain-dump",
       "source": "./plugins/brain-dump",
       "description": "Turns messy, voice-transcribed input into a structured prompt and asks for confirmation before executing it."
+    },
+    {
+      "name": "helper-desk",
+      "source": "./helper-desk",
+      "description": "Status of active sub-agents: state, tokens, tool calls and estimated cost, shown in the status line and on demand."
     }
   ]
 }
