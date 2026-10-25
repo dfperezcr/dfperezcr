@@ -8,11 +8,25 @@ Shows the state of active sub-agents in Claude Code: name (type), state, tokens,
 
 ## Install
 
+Load it for a session (tested):
+
 ```
-/plugin install /path/to/helper-desk
+claude --plugin-dir /path/to/helper-desk
 ```
 
-or load it for one session: `claude --plugin-dir /path/to/helper-desk`.
+Install it permanently from a marketplace (tested with a local marketplace folder):
+
+```
+/plugin marketplace add <folder-with-.claude-plugin/marketplace.json>
+/plugin install helper-desk@<marketplace-name>
+```
+
+`/plugin install <path>` does not work: Claude Code only installs plugins listed in a marketplace.
+The repository does not yet ship a `marketplace.json`.
+
+On the first session after installing, the plugin wires the status line in `settings.json` automatically (see below).
+
+Run the details panel with `/helper-desk:helper-desk`.
 
 ## Status line wiring (automatic)
 
