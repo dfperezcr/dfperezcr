@@ -14,19 +14,17 @@ Shows the state of active sub-agents in Claude Code: name (type), state, tokens,
 
 or load it for one session: `claude --plugin-dir /path/to/helper-desk`.
 
-## Enable the status line (required)
+## Status line wiring (automatic)
 
-Plugins cannot set `statusLine` or `subagentStatusLine`, so add this to `~/.claude/settings.json`
-(or `.claude/settings.json`), using the absolute path to this plugin:
+A `SessionStart` hook (`scripts/install_statusline.py`) sets `statusLine` and `subagentStatusLine`
+in `~/.claude/settings.json` (or `$CLAUDE_CONFIG_DIR/settings.json`) to this plugin's scripts.
 
-```json
-{
-  "statusLine": { "type": "command", "command": "python3 /ABS/PATH/helper-desk/scripts/taskbar.py" },
-  "subagentStatusLine": { "type": "command", "command": "python3 /ABS/PATH/helper-desk/scripts/subagent_rows.py" }
-}
-```
+- If either key is unset, or points at an older install of this plugin, it is set or re-pointed.
+- If either key belongs to something else, it is left alone. The taskbar then does not show;
+  point the key at `python3 <plugin>/scripts/taskbar.py` yourself to switch.
+- Invalid JSON in `settings.json` is never touched.
 
-Note: `statusLine` replaces any status line you already have.
+Plugins cannot ship these keys themselves, which is why the hook writes them.
 
 ## Data
 
@@ -49,8 +47,9 @@ Note: `statusLine` replaces any status line you already have.
 | Cost, running agents | **Rough estimate** | live `tokenCount` x `running_usd_per_mtok` |
 | Step progress (x / y) | **Not available** | No step total is exposed; shown as RUN |
 
-Cost rates in `prices.json` are assumptions. Set them to your billing rates.
-Models without an entry use `default` and are labelled as such.
+Cost rates in `prices.json` come from the official pricing page (fetched 2026-10-25). They exclude
+1-hour cache writes, the batch discount, the data-residency multiplier and cloud-platform premiums,
+so cost is an estimate. Models without an entry use `default` (Sonnet 5.5 rates) and are labelled as such.
 
 ## Tests
 

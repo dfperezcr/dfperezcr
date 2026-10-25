@@ -79,7 +79,9 @@ class HelperDeskTest(unittest.TestCase):
         self.assertEqual(agent["tokens"], 27868)
         self.assertEqual(agent["model"], "claude-sonnet-5-5")
         self.assertIsNotNone(agent["cost_usd"])
-        self.assertFalse(agent["cost_known"])  # default rates, not a model-specific entry
+        self.assertTrue(agent["cost_known"])  # claude-sonnet-5-5 has its own entry in prices.json
+        # 2*2 + 20*10 + 113*2.5 + 27733*0.10 = 3259.8 per million -> $0.0032598
+        self.assertAlmostEqual(agent["cost_usd"], 0.0032598, places=6)
 
     def test_failed_result_is_recorded_as_failed(self):
         self.hook({"hook_event_name": "SubagentStart", "agent_id": AGENT, "agent_type": "general-purpose"})
