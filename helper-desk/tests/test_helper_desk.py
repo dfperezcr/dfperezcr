@@ -142,6 +142,28 @@ class HelperDeskTest(unittest.TestCase):
         agent = json.loads((pathlib.Path(self.dir) / f"{SESSION}.json").read_text())["agents"][AGENT]
         self.assertEqual(agent["status"], "killed")
 
+    def test_result_without_usage_is_priced_later_from_transcript(self):
+        transcript = pathlib.Path(self.dir) / "agent.jsonl"
+        msg = {"id": "msg_1", "model": "claude-sonnet-5-5",
+               "usage": {"input_tokens": 10, "output_tokens": 5, "cache_creation_input_tokens": 0,
+                         "cache_read_input_tokens": 0}}
+        transcript.write_text(json.dumps({"message": msg}) + "\n")
+        self.hook({"hook_event_name": "SubagentStart", "agent_id": AGENT, "agent_type": "general-purpose"})
+        result = self.agent_result()
+        del result["usage"]
+        self.hook({"hook_event_name": "PostToolUse", "tool_name": "Agent", "tool_response": result})
+        agent = json.loads((pathlib.Path(self.dir) / f"{SESSION}.json").read_text())["agents"][AGENT]
+        self.assertIsNone(agent["cost_usd"])  # not $0.0000 when the result had no usage
+        self.hook({"hook_event_name": "SubagentStop", "agent_id": AGENT,
+                   "agent_transcript_path": str(transcript)})
+        agent = json.loads((pathlib.Path(self.dir) / f"{SESSION}.json").read_text())["agents"][AGENT]
+        self.assertEqual(agent["usage"]["output_tokens"], 5)
+        self.assertIsNotNone(agent["cost_usd"])
+
+    def test_subagent_start_without_agent_id_does_not_crash(self):
+        self.hook({"hook_event_name": "SubagentStart", "agent_type": "general-purpose"})
+        self.assertFalse((pathlib.Path(self.dir) / f"{SESSION}.json").exists())
+
     def test_taskbar_silent_without_agents(self):
         self.assertEqual(run("taskbar.py", {"session_id": "nobody"}, self.dir), "")
 

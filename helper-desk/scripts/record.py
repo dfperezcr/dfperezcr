@@ -48,7 +48,9 @@ def record_result(agents, result, now):
     agent["duration_ms"] = result.get("totalDurationMs")
     agent["tools"] = int(result.get("totalToolUseCount") or agent["tools"])
     agent["tool_stats"] = {k: v for k, v in (result.get("toolStats") or {}).items() if isinstance(v, int)}
-    set_usage(agent, result.get("usage") or {})
+    # Without usage in the result, leave usage and cost unset so SubagentStop can read the transcript.
+    if result.get("usage"):
+        set_usage(agent, result["usage"])
     agent["tokens"] = int(result.get("totalTokens") or agent["tokens"])
     if agent["status"] != "running":
         agent["finished"] = agent["finished"] or now
@@ -81,6 +83,8 @@ def apply(name, event, session, now):
     agents = state["agents"]
 
     if name == "SubagentStart":
+        if not event.get("agent_id"):
+            return
         agents[event["agent_id"]] = new_agent(event.get("agent_type", ""), now)
     elif name == "SubagentStop":
         agent = finish(agents, event.get("agent_id"), "completed", now)

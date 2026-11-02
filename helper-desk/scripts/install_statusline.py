@@ -14,9 +14,10 @@ import re
 import sys
 
 SCRIPTS = pathlib.Path(__file__).resolve().parent
+# Quoted: the plugin path may contain spaces, and the shell splits an unquoted command.
 WIRING = {
-    "statusLine": f"python3 {SCRIPTS / 'taskbar.py'}",
-    "subagentStatusLine": f"python3 {SCRIPTS / 'subagent_rows.py'}",
+    "statusLine": f'python3 "{SCRIPTS / "taskbar.py"}"',
+    "subagentStatusLine": f'python3 "{SCRIPTS / "subagent_rows.py"}"',
 }
 OURS = re.compile(r"helper-desk\S*/scripts/(taskbar|subagent_rows)\.py")
 
@@ -37,7 +38,9 @@ def wire(settings):
         current_cmd = current.get("command") if isinstance(current, dict) else None
         if current_cmd == command:
             continue
-        if current_cmd is None or OURS.search(current_cmd):
+        # Unset: wire it. Ours (any older install of this plugin): re-point it. Anything else
+        # (a foreign dict, or a string or other value): leave it alone.
+        if current is None or (current_cmd is not None and OURS.search(current_cmd)):
             settings[key] = {"type": "command", "command": command}
             changed = True
     return changed
