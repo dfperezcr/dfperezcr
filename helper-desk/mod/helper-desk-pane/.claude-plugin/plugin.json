@@ -1,0 +1,6 @@
+{
+  "name": "helper-desk-pane",
+  "version": "0.1.0",
+  "description": "Pane listing this session's running sub-agents with their tool calls and tokens.",
+  "types": "./types/index.d.ts"
+}
