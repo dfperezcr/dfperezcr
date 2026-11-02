@@ -25,6 +25,16 @@ const draft = atom({ plugin: 'run-check', key: 'draft' } as const, '' as Draft, 
 const adjust = atom({ plugin: 'run-check', key: 'adjust' } as const, 0, { shape: 'adjust-1' })
 const hidden = atom({ plugin: 'run-check', key: 'hidden' } as const, false, { shape: 'hidden-1' })
 const pending = atom({ plugin: 'run-check', key: 'pending' } as const, '' as Effort | '', { shape: 'pending-1' })
+const lastEnd = atom({ plugin: 'run-check', key: 'lastEnd' } as const, 0, { shape: 'lastEnd-1' })
+const tick = atom({ plugin: 'run-check', key: 'tick' } as const, 0, { shape: 'tick-1' })
+
+// The prompt cache is assumed to hold for one hour after the main loop's last turn: the
+// session's requests use a 1-hour cache TTL. This is an estimate, not a reading.
+const CACHE_MS = 60 * 60 * 1000
+
+const kTokens = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : `${Math.round(n / 1000)}K`)
+const clockTime = (iso: string) =>
+  new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 
 function assess(task: string): Assessment {
   if (ARCHITECTURE.test(task))
@@ -87,6 +97,9 @@ export const register: Register = on => {
       name: 'run-check',
       description: 'Suggest a model tier and effort level for a task, with a pre-run checklist',
     })
+    $.clock.every(30000, () => {
+      void update($, tick, n => n + 1)
+    })
 
     return next(e)
   })
@@ -126,28 +139,62 @@ export const register: Register = on => {
   })
 
   on('turn.complete', async ($, e, next) => {
-    if (!e.agentId) await update($, pending, () => '')
+    if (!e.agentId) {
+      await update($, pending, () => '')
+      const now = await $.clock.now()
+      await update($, lastEnd, () => now)
+    }
 
     return next(e)
   })
 
-  // The band above the prompt: quiet until there is a draft to judge.
-  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    const text = (await read($, draft)).trim()
-    if (text === '' || (await read($, hidden))) return next(e)
-
+  // The band above the prompt: a status strip always, the effort card while there is a draft.
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e) => {
     const { Box, Button, Text } = $.ui.resolve(e)
-    const a = assess(text)
-    const offset = await read($, adjust)
-    const shown = effortFor(text, offset)
-    const note = offset === 0 ? 'from the suggestion' : `${offset > 0 ? 'up' : 'down'} from the suggestion`
+    await read($, tick)
+    const usage = await $.session.usage()
+    const now = await $.clock.now()
+    const last = await read($, lastEnd)
 
+    const parts: string[] = []
+    const ctx = usage.context
+    if (ctx.tokens !== undefined && ctx.percent !== undefined)
+      parts.push(`Chat ${ctx.percent}% full (${kTokens(ctx.tokens)} of ${kTokens(ctx.window)})`)
+    const five = usage.rateLimits.find(r => r.kind === 'five_hour')
+    if (five) {
+      const reset = five.resetsAt ? `, resets ${clockTime(five.resetsAt)}` : ''
+      parts.push(`5-hour ${five.percentUsed}% used${reset}`)
+    }
+    const week = usage.rateLimits.find(r => r.kind === 'seven_day')
+    if (week) parts.push(`week ${week.percentUsed}%`)
+    if (last > 0) {
+      const left = Math.max(0, Math.round((last + CACHE_MS - now) / 60000))
+      parts.push(left > 0 ? `warm ~${left}m left (est.)` : 'cache cold (est.)')
+    }
+    const strip = parts.length ? <Text dimColor>{parts.join(' · ')}</Text> : null
+
+    const text = (await read($, draft)).trim()
+    let card = null
+    if (text !== '' && !(await read($, hidden))) {
+      const a = assess(text)
+      const offset = await read($, adjust)
+      const shown = effortFor(text, offset)
+      const note = offset === 0 ? 'from the suggestion' : `${offset > 0 ? 'up' : 'down'} from the suggestion`
+      card = (
+        <Box>
+          <Text>{`Effort ${shown} for this message, ${note}: ${a.kind}.`}</Text>
+          <Button key="lower" label="Lower" onPress={() => update($, adjust, n => Math.max(-4, n - 1))} />
+          <Button key="higher" label="Higher" onPress={() => update($, adjust, n => Math.min(4, n + 1))} />
+          <Button key="hide" label="Hide" onPress={() => update($, hidden, () => true)} />
+        </Box>
+      )
+    }
+
+    if (!strip && !card) return <Box />
     return (
-      <Box>
-        <Text>{`Effort ${shown} for this message, ${note}: ${a.kind}.`}</Text>
-        <Button key="lower" label="Lower" onPress={() => update($, adjust, n => Math.max(-4, n - 1))} />
-        <Button key="higher" label="Higher" onPress={() => update($, adjust, n => Math.min(4, n + 1))} />
-        <Button key="hide" label="Hide" onPress={() => update($, hidden, () => true)} />
+      <Box flexDirection="column">
+        {strip}
+        {card}
       </Box>
     )
   })
