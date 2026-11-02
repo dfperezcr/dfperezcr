@@ -119,7 +119,7 @@ export const register: Register = on => {
 
   // The main loop's requests use the effort the person chose; subagents keep theirs.
   on('turn.step', async function* ($, e, next) {
-    const chosen = await read($, pending)
+    const chosen = (await read($, pending)) as Effort | ''
     if (!e.agentId && chosen) return yield* next({ ...e, effort: chosen })
 
     return yield* next(e)
