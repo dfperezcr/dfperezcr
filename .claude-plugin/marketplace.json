@@ -15,6 +15,11 @@
       "name": "helper-desk",
       "source": "./helper-desk",
       "description": "Status of active sub-agents: state, tokens, tool calls and estimated cost, shown in the status line and on demand."
+    },
+    {
+      "name": "run-check",
+      "source": "./helper-desk/mod/run-check",
+      "description": "Effort suggestion and status strip above the prompt box; /run-check <task> gives the checklist."
     }
   ]
 }
