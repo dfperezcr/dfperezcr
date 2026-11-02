@@ -27,3 +27,34 @@ test('an empty run-check prints the usage line', async ($, on) => {
   const out = await $.command.run({ command: 'run-check', args: '' } as any)
   expect(JSON.stringify(out)).toContain('Usage: /run-check')
 })
+
+const BAND = { plugin: 'run-check', component: 'AbovePrompt', props: { hasSurvey: false } } as const
+
+test('the band above the prompt shows the suggestion for the draft being typed', async ($, on) => {
+  on('command.register', () => ({ value: { command: 'run-check' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('prompt.edit', (_, e) => ({ text: e.text, cursor: e.cursor }))
+
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.prompt.edit({ text: '', cursor: 0, start: 0, end: 0, inputText: 'debug the flaky login test' } as any)
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' } as any)
+  expect((await ui.find({ type: 'Text' }))?.text).toContain('Opus (larger tier)')
+  await ui.unmount()
+})
+
+test('the band stays quiet while the draft is empty', async ($, on) => {
+  on('command.register', () => ({ value: { command: 'run-check' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  // Nothing draws beneath the plugin: this hook stands for the engine's own band.
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+
+    return <Text>engine</Text>
+  })
+
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' } as any)
+  expect((await ui.find({ type: 'Text' }))?.text).toBe('engine')
+  await ui.unmount()
+})

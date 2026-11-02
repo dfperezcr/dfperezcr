@@ -1,4 +1,7 @@
+import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
+
+import type { Draft } from '../types'
 
 type Tier = 'smaller' | 'middle' | 'larger'
 type Assessment = { kind: string; tier: Tier; reason: string }
@@ -14,6 +17,8 @@ const MODEL: Record<Tier, string> = {
   middle: 'Sonnet (middle tier)',
   larger: 'Opus (larger tier)',
 }
+
+const draft = atom({ plugin: 'run-check', key: 'draft' } as const, '' as Draft, { shape: 'draft-1' })
 
 function assess(task: string): Assessment {
   if (ARCHITECTURE.test(task))
@@ -76,5 +81,34 @@ export const register: Register = on => {
 
   on('command.run', { command: 'run-check' }, async (_$, e) => {
     return { text: report(e.args) }
+  })
+
+  // Keep the draft in step with the prompt box, one edit at a time.
+  on('prompt.edit', async ($, e, next) => {
+    const text = e.text.slice(0, e.start) + e.inputText + e.text.slice(e.end)
+    await update($, draft, () => text.slice(0, 2000))
+
+    return next(e)
+  })
+
+  on('prompt.submit', async ($, e, next) => {
+    await update($, draft, () => '')
+
+    return next(e)
+  })
+
+  // The band above the prompt: quiet until there is a draft to judge.
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    const text = (await read($, draft)).trim()
+    if (text === '') return next(e)
+
+    const { Box, Text } = $.ui.resolve(e)
+    const a = assess(text)
+
+    return (
+      <Box>
+        <Text dimColor>{`Run check: ${MODEL[a.tier]} · ${a.kind} · effort default`}</Text>
+      </Box>
+    )
   })
 }

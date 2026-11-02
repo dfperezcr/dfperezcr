@@ -1,5 +1,6 @@
 {
   "name": "run-check",
-  "version": "0.1.0",
-  "description": "Before a run, /run-check <task> suggests a model tier and effort level and a short pre-run checklist."
+  "version": "0.2.0",
+  "description": "Shows a model tier and effort suggestion above the prompt box as you type; /run-check <task> gives the full checklist.",
+  "types": "./types/index.d.ts"
 }
