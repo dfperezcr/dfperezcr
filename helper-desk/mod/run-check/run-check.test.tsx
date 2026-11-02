@@ -16,7 +16,7 @@ test('a debugging task gets the larger tier and a raise-effort note', async ($, 
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
   const out = await $.command.run({ command: 'run-check', args: 'debug the flaky login test' } as any)
   expect(JSON.stringify(out)).toContain('Opus (larger tier)')
-  expect(JSON.stringify(out)).toContain('raise to high')
+  expect(JSON.stringify(out)).toContain('raise it if Claude skips')
 })
 
 test('an empty run-check prints the usage line', async ($, on) => {
@@ -39,7 +39,21 @@ test('the band above the prompt shows the suggestion for the draft being typed',
   await $.prompt.edit({ text: '', cursor: 0, start: 0, end: 0, inputText: 'debug the flaky login test' } as any)
 
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' } as any)
-  expect((await ui.find({ type: 'Text' }))?.text).toContain('Opus (larger tier)')
+  expect((await ui.find({ type: 'Text' }))?.text).toContain('Effort high for this message')
+  await ui.unmount()
+})
+
+test('Higher raises the effort the band shows for the draft', async ($, on) => {
+  on('command.register', () => ({ value: { command: 'run-check' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('prompt.edit', (_, e) => ({ text: e.text, cursor: e.cursor }))
+
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.prompt.edit({ text: '', cursor: 0, start: 0, end: 0, inputText: 'debug the flaky login test' } as any)
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' } as any)
+  await ui.press({ key: 'higher' } as any)
+  expect((await ui.find({ type: 'Text' }))?.text).toContain('Effort xhigh for this message, up from the suggestion')
   await ui.unmount()
 })
 

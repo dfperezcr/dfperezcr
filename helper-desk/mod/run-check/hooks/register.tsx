@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
 
-import type { Draft } from '../types'
+import type { Draft, Effort } from '../types'
 
 type Tier = 'smaller' | 'middle' | 'larger'
 type Assessment = { kind: string; tier: Tier; reason: string }
@@ -17,8 +17,14 @@ const MODEL: Record<Tier, string> = {
   middle: 'Sonnet (middle tier)',
   larger: 'Opus (larger tier)',
 }
+// The suggested effort per tier, on the ladder the buttons walk.
+const LADDER: Effort[] = ['low', 'medium', 'high', 'xhigh', 'max']
+const BASE: Record<Tier, Effort> = { smaller: 'low', middle: 'medium', larger: 'high' }
 
 const draft = atom({ plugin: 'run-check', key: 'draft' } as const, '' as Draft, { shape: 'draft-1' })
+const adjust = atom({ plugin: 'run-check', key: 'adjust' } as const, 0, { shape: 'adjust-1' })
+const hidden = atom({ plugin: 'run-check', key: 'hidden' } as const, false, { shape: 'hidden-1' })
+const pending = atom({ plugin: 'run-check', key: 'pending' } as const, '' as Effort | '', { shape: 'pending-1' })
 
 function assess(task: string): Assessment {
   if (ARCHITECTURE.test(task))
@@ -46,13 +52,19 @@ function assess(task: string): Assessment {
   }
 }
 
+// The effort for a draft, moved by the person's Lower and Higher presses.
+function effortFor(text: string, offset: number): Effort {
+  const base = LADDER.indexOf(BASE[assess(text).tier])
+  return LADDER[Math.min(LADDER.length - 1, Math.max(0, base + offset))]
+}
+
 function report(task: string): string {
   if (task.trim() === '') return 'Usage: /run-check <describe the task>'
   const a = assess(task)
   const effort =
     a.tier === 'larger'
-      ? 'default; raise to high if Claude skips files, tests or verification.'
-      : 'default; no need to raise it for this kind of task.'
+      ? 'high; raise it if Claude skips files, tests or verification.'
+      : `${BASE[a.tier]}; no need to raise it for this kind of task.`
   return [
     'Run check',
     `Task type: ${a.kind}`,
@@ -91,8 +103,30 @@ export const register: Register = on => {
     return next(e)
   })
 
+  // Sending: the effort the person set for this draft goes to the turn, then the band clears.
   on('prompt.submit', async ($, e, next) => {
+    const text = await read($, draft)
+    if (text.trim() !== '') {
+      const offset = await read($, adjust)
+      await update($, pending, () => (offset === 0 ? '' : effortFor(text, offset)))
+    }
     await update($, draft, () => '')
+    await update($, adjust, () => 0)
+    await update($, hidden, () => false)
+
+    return next(e)
+  })
+
+  // The main loop's requests use the effort the person chose; subagents keep theirs.
+  on('turn.step', async function* ($, e, next) {
+    const chosen = await read($, pending)
+    if (!e.agentId && chosen) return yield* next({ ...e, effort: chosen })
+
+    return yield* next(e)
+  })
+
+  on('turn.complete', async ($, e, next) => {
+    if (!e.agentId) await update($, pending, () => '')
 
     return next(e)
   })
@@ -100,14 +134,20 @@ export const register: Register = on => {
   // The band above the prompt: quiet until there is a draft to judge.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const text = (await read($, draft)).trim()
-    if (text === '') return next(e)
+    if (text === '' || (await read($, hidden))) return next(e)
 
-    const { Box, Text } = $.ui.resolve(e)
+    const { Box, Button, Text } = $.ui.resolve(e)
     const a = assess(text)
+    const offset = await read($, adjust)
+    const shown = effortFor(text, offset)
+    const note = offset === 0 ? 'from the suggestion' : `${offset > 0 ? 'up' : 'down'} from the suggestion`
 
     return (
       <Box>
-        <Text dimColor>{`Run check: ${MODEL[a.tier]} · ${a.kind} · effort default`}</Text>
+        <Text>{`Effort ${shown} for this message, ${note}: ${a.kind}.`}</Text>
+        <Button key="lower" label="Lower" onPress={() => update($, adjust, n => Math.max(-4, n - 1))} />
+        <Button key="higher" label="Higher" onPress={() => update($, adjust, n => Math.min(4, n + 1))} />
+        <Button key="hide" label="Hide" onPress={() => update($, hidden, () => true)} />
       </Box>
     )
   })
