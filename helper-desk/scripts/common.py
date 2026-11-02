@@ -55,11 +55,14 @@ def save(session_id, state):
 
 
 @contextlib.contextmanager
-def locked(session_id):
-    """Serializes read-modify-write of one session's state across concurrent hooks."""
-    path = state_path(session_id)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path.with_name(path.name + ".lock"), "w") as lock:
+def locked(session_id=None):
+    """Serializes read-modify-write and pruning across hooks.
+
+    One lock file for the whole state dir, never deleted. Hooks are short, so sharing the lock
+    across sessions costs nothing, and pruning cannot race a hook that is writing a session.
+    """
+    state_dir().mkdir(parents=True, exist_ok=True)
+    with open(state_dir() / ".lock", "w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         try:
             yield
@@ -78,9 +81,10 @@ def prune_old_states():
     if not state_dir().is_dir():
         return
     cutoff = time.time() - PRUNE_AFTER_SECONDS
-    for f in list(state_dir().glob("*.json")) + list(state_dir().glob("*.json.lock")):
-        if f.stat().st_mtime < cutoff:
-            f.unlink(missing_ok=True)
+    with locked():
+        for f in state_dir().glob("*.json"):
+            if f.stat().st_mtime < cutoff:
+                f.unlink(missing_ok=True)
 
 
 def new_agent(agent_type, now):

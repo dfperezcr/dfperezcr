@@ -30,8 +30,8 @@ class InstallStatuslineTest(unittest.TestCase):
 
     def test_creates_both_entries_when_missing(self):
         s = self.run_install()
-        self.assertEqual(s["statusLine"]["command"], f"python3 {TAR}")
-        self.assertEqual(s["subagentStatusLine"]["command"], f"python3 {ROWS}")
+        self.assertEqual(s["statusLine"]["command"], f'python3 "{TAR}"')
+        self.assertEqual(s["subagentStatusLine"]["command"], f'python3 "{ROWS}"')
 
     def test_second_run_does_not_rewrite(self):
         self.run_install()
@@ -47,14 +47,33 @@ class InstallStatuslineTest(unittest.TestCase):
         s = self.run_install()
         self.assertEqual(s["model"], "opus")
         self.assertEqual(s["statusLine"]["command"], "~/my-statusline.sh")
-        self.assertEqual(s["subagentStatusLine"]["command"], f"python3 {ROWS}")
+        self.assertEqual(s["subagentStatusLine"]["command"], f'python3 "{ROWS}"')
 
     def test_repoints_old_helper_desk_install(self):
         self.path.write_text(json.dumps({
             "statusLine": {"type": "command", "command": "python3 /old/helper-desk/scripts/taskbar.py"},
         }))
         s = self.run_install()
-        self.assertEqual(s["statusLine"]["command"], f"python3 {TAR}")
+        self.assertEqual(s["statusLine"]["command"], f'python3 "{TAR}"')
+
+    def test_foreign_string_statusline_is_left_alone(self):
+        self.path.write_text(json.dumps({"statusLine": "~/my-statusline.sh"}))
+        s = self.run_install()
+        self.assertEqual(s["statusLine"], "~/my-statusline.sh")
+        self.assertEqual(s["subagentStatusLine"]["command"], f'python3 "{ROWS}"')
+
+    def test_path_with_spaces_is_quoted_and_stable(self):
+        import shutil
+        plugin = pathlib.Path(self.tmp.name) / "my plugins" / "helper-desk"
+        shutil.copytree(SCRIPT.parent.parent, plugin, ignore=shutil.ignore_patterns("__pycache__"))
+        env = dict(os.environ, HELPER_DESK_SETTINGS=str(self.path))
+        cmd = [sys.executable, str(plugin / "scripts" / "install_statusline.py")]
+        subprocess.run(cmd, env=env, check=True, capture_output=True)
+        s = json.loads(self.path.read_text())
+        self.assertEqual(s["statusLine"]["command"], f'python3 "{plugin / "scripts" / "taskbar.py"}"')
+        mtime = self.path.stat().st_mtime_ns
+        subprocess.run(cmd, env=env, check=True, capture_output=True)
+        self.assertEqual(self.path.stat().st_mtime_ns, mtime)
 
     def test_invalid_json_is_left_alone(self):
         self.path.write_text("{not json")
