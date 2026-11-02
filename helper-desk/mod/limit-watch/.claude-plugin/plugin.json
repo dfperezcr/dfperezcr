@@ -1,0 +1,6 @@
+{
+  "name": "limit-watch",
+  "version": "0.1.0",
+  "description": "Warns at 75% and 90% of the five-hour rate-limit window and shows its usage and reset time in the status line.",
+  "types": "./types/index.d.ts"
+}
