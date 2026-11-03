@@ -23,7 +23,7 @@ claude plugin install helper-desk@dfperezcr
 ```
 
 Or from inside Claude Code: `/plugin marketplace add /path/to/dfperezcr`, then `/plugin install helper-desk@dfperezcr`.
-The GitHub form (`/plugin marketplace add dfperezcr/dfperezcr`) is not tested yet.
+The GitHub form (`/plugin marketplace add dfperezcr/dfperezcr`) also works (tested with `claude plugin marketplace add` and `claude plugin install helper-desk@dfperezcr`).
 
 `/plugin install <path>` does not work: Claude Code only installs plugins listed in a marketplace.
 
