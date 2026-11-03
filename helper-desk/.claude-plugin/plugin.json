@@ -1,8 +1,18 @@
 {
   "name": "helper-desk",
+  "displayName": "Helper Desk",
   "version": "0.1.0",
   "description": "Status of active sub-agents: state, tokens, tool calls and estimated cost, shown in the status line and on demand.",
   "author": {
-    "name": "dfperezcr"
-  }
+    "name": "dfperezcr",
+    "url": "https://github.com/dfperezcr"
+  },
+  "repository": "https://github.com/dfperezcr/dfperezcr",
+  "license": "GPL-3.0-only",
+  "keywords": [
+    "sub-agents",
+    "status-line",
+    "tokens",
+    "cost"
+  ]
 }
