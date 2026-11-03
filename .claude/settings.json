@@ -1,0 +1,11 @@
+{
+  "extraKnownMarketplaces": {
+    "dfperezcr": {
+      "source": { "source": "github", "repo": "dfperezcr/dfperezcr" }
+    }
+  },
+  "enabledPlugins": {
+    "helper-desk@dfperezcr": true,
+    "brain-dump@dfperezcr": true
+  }
+}
